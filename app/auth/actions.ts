@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signIn(formData: FormData) {
-  const email = String(formData.get("email") || "");
+  const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
 
   const supabase = await createClient();
@@ -22,9 +22,17 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signUp(formData: FormData) {
-  const fullName = String(formData.get("fullName") || "");
-  const email = String(formData.get("email") || "");
+  const fullName = String(formData.get("fullName") || "").trim();
+  const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
+
+  if (fullName.length < 2) {
+    redirect("/signup?error=Please%20enter%20your%20full%20name.");
+  }
+
+  if (password.length < 6) {
+    redirect("/signup?error=Password%20must%20be%20at%20least%206%20characters.");
+  }
 
   const supabase = await createClient();
 
@@ -42,20 +50,22 @@ export async function signUp(formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent(error.message)}`);
   }
 
-  if (data.user) {
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: data.user.id,
-      full_name: fullName,
-      role: "teacher",
-    });
+  if (!data.user) {
+    redirect("/signup?error=Could%20not%20create%20your%20account.");
+  }
 
-    if (profileError) {
-      redirect(
-        `/signup?error=${encodeURIComponent(
-          "Account created, but the profile could not be created. Please contact support."
-        )}`
-      );
-    }
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: data.user.id,
+    full_name: fullName,
+    role: "teacher",
+  });
+
+  if (profileError) {
+    redirect(
+      `/signup?error=${encodeURIComponent(
+        "Account created, but the profile could not be created. Please contact support."
+      )}`
+    );
   }
 
   redirect("/dashboard");
@@ -63,15 +73,27 @@ export async function signUp(formData: FormData) {
 
 export async function signOut() {
   const supabase = await createClient();
+
   await supabase.auth.signOut();
+
   redirect("/");
 }
+
 export async function requestPasswordReset(formData: FormData) {
-  const email = String(formData.get("email") || "");
+  const email = String(formData.get("email") || "").trim();
+
   const supabase = await createClient();
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+  if (!siteUrl) {
+    redirect(
+      "/forgot-password?error=Password%20reset%20is%20not%20configured%20yet."
+    );
+  }
+
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
+    redirectTo: `${siteUrl}/auth/callback`,
   });
 
   if (error) {
@@ -100,7 +122,10 @@ export async function updatePassword(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  });
 
   if (error) {
     redirect(
