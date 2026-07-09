@@ -49,7 +49,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               placeholder="••••••••"
             />
           </label>
-
+        <Link
+  href="/forgot-password"
+  className="block text-right text-sm font-semibold text-violet-300"
+>
+  Forgot password?
+</Link>
           <button
             type="submit"
             className="w-full rounded-lg bg-violet-500 px-5 py-3 font-semibold transition hover:bg-violet-400"

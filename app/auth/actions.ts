@@ -66,3 +66,49 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/");
 }
+export async function requestPasswordReset(formData: FormData) {
+  const email = String(formData.get("email") || "");
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
+  });
+
+  if (error) {
+    redirect(
+      `/forgot-password?error=${encodeURIComponent(
+        "We could not send the reset email. Please try again."
+      )}`
+    );
+  }
+
+  redirect("/forgot-password?sent=1");
+}
+
+export async function updatePassword(formData: FormData) {
+  const password = String(formData.get("password") || "");
+  const confirmPassword = String(formData.get("confirmPassword") || "");
+
+  if (password.length < 6) {
+    redirect(
+      "/auth/reset-password?error=Password%20must%20be%20at%20least%206%20characters."
+    );
+  }
+
+  if (password !== confirmPassword) {
+    redirect("/auth/reset-password?error=Passwords%20do%20not%20match.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    redirect(
+      `/auth/reset-password?error=${encodeURIComponent(
+        "This reset link is invalid or has expired. Request a new one."
+      )}`
+    );
+  }
+
+  redirect("/login?message=Password%20updated.%20Please%20sign%20in.");
+}
