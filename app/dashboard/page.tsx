@@ -3,6 +3,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { NavBar } from "@/components/NavBar";
 
+function todayISO() {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient();
 
@@ -22,17 +28,40 @@ export default async function DashboardPage() {
   const batchIds = (batches || []).map((b) => b.id);
 
   let activeStudentCount = 0;
+  let todayAttendanceLabel = "—";
 
   if (batchIds.length > 0) {
     const { data: enrollments } = await supabase
       .from("enrollments")
-      .select("student_id")
+      .select("id, student_id")
       .in("batch_id", batchIds)
       .eq("status", "active");
 
+    const activeEnrollments = enrollments || [];
     activeStudentCount = new Set(
-      (enrollments || []).map((e) => e.student_id)
+      activeEnrollments.map((e) => e.student_id)
     ).size;
+
+    if (activeEnrollments.length > 0) {
+      const enrollmentIds = activeEnrollments.map((e) => e.id);
+      const { data: todayRecords } = await supabase
+        .from("attendance_records")
+        .select("status")
+        .eq("attendance_date", todayISO())
+        .in("enrollment_id", enrollmentIds);
+
+      if (todayRecords && todayRecords.length > 0) {
+        const presentCount = todayRecords.filter(
+          (r) => r.status === "present"
+        ).length;
+        const pct = Math.round(
+          (presentCount / activeEnrollments.length) * 100
+        );
+        todayAttendanceLabel = `${pct}%`;
+      } else {
+        todayAttendanceLabel = "Not marked";
+      }
+    }
   }
 
   const hasBatches = batchIds.length > 0;
@@ -52,7 +81,7 @@ export default async function DashboardPage() {
             {[
               ["Active students", String(activeStudentCount)],
               ["Batches", String(batchIds.length)],
-              ["Today's attendance", "—"],
+              ["Today's attendance", todayAttendanceLabel],
               ["Needs attention", "0"],
             ].map(([label, value]) => (
               <article
