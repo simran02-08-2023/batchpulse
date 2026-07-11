@@ -121,20 +121,37 @@ export default async function DashboardPage() {
               ["Batches", String(batchIds.length)],
               ["Today's attendance", todayAttendanceLabel],
               ["Needs attention", String(needsAttentionCount)],
-            ].map(([label, value]) => (
-              <article
-                key={label}
-                className="rounded-xl border border-slate-800 bg-slate-900 p-5"
-              >
-                <p className="text-sm text-slate-400">{label}</p>
-                <p className="mt-3 text-3xl font-bold">{value}</p>
-                {label === "Needs attention" ? (
-                  <p className="mt-1 text-xs text-slate-500">
-                    Below 75% attendance, last 14 days
-                  </p>
-                ) : null}
-              </article>
-            ))}
+            ].map(([label, value]) => {
+              const isAttentionCard = label === "Needs attention";
+              const content = (
+                <>
+                  <p className="text-sm text-slate-400">{label}</p>
+                  <p className="mt-3 text-3xl font-bold">{value}</p>
+                  {isAttentionCard ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Below 75% attendance, last 14 days
+                    </p>
+                  ) : null}
+                </>
+              );
+
+              return isAttentionCard ? (
+                <Link
+                  key={label}
+                  href="/needs-attention"
+                  className="rounded-xl border border-slate-800 bg-slate-900 p-5 transition hover:border-violet-500"
+                >
+                  {content}
+                </Link>
+              ) : (
+                <article
+                  key={label}
+                  className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+                >
+                  {content}
+                </article>
+              );
+            })}
           </section>
 
           {hasBatches ? (
