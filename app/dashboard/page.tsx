@@ -9,6 +9,14 @@ function todayISO() {
   return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
+function daysAgoISO(days: number) {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60000;
+  const local = new Date(now.getTime() - offsetMs);
+  local.setDate(local.getDate() - days);
+  return local.toISOString().slice(0, 10);
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient();
 
@@ -29,6 +37,7 @@ export default async function DashboardPage() {
 
   let activeStudentCount = 0;
   let todayAttendanceLabel = "—";
+  let needsAttentionCount = 0;
 
   if (batchIds.length > 0) {
     const { data: enrollments } = await supabase
@@ -44,6 +53,11 @@ export default async function DashboardPage() {
 
     if (activeEnrollments.length > 0) {
       const enrollmentIds = activeEnrollments.map((e) => e.id);
+      const enrollmentToStudent = new Map(
+        activeEnrollments.map((e) => [e.id, e.student_id])
+      );
+
+      // Today's attendance %
       const { data: todayRecords } = await supabase
         .from("attendance_records")
         .select("status")
@@ -61,6 +75,30 @@ export default async function DashboardPage() {
       } else {
         todayAttendanceLabel = "Not marked";
       }
+
+      // Needs attention: students under 75% attendance in last 14 days,
+      // with at least 2 sessions recorded (avoids flagging on 1 absence).
+      const { data: recentRecords } = await supabase
+        .from("attendance_records")
+        .select("enrollment_id, status")
+        .gte("attendance_date", daysAgoISO(13))
+        .lte("attendance_date", todayISO())
+        .in("enrollment_id", enrollmentIds);
+
+      const byStudent = new Map<string, { present: number; total: number }>();
+
+      for (const record of recentRecords || []) {
+        const studentId = enrollmentToStudent.get(record.enrollment_id);
+        if (!studentId) continue;
+        const entry = byStudent.get(studentId) || { present: 0, total: 0 };
+        entry.total += 1;
+        if (record.status === "present") entry.present += 1;
+        byStudent.set(studentId, entry);
+      }
+
+      needsAttentionCount = Array.from(byStudent.values()).filter(
+        (entry) => entry.total >= 2 && entry.present / entry.total < 0.75
+      ).length;
     }
   }
 
@@ -82,7 +120,7 @@ export default async function DashboardPage() {
               ["Active students", String(activeStudentCount)],
               ["Batches", String(batchIds.length)],
               ["Today's attendance", todayAttendanceLabel],
-              ["Needs attention", "0"],
+              ["Needs attention", String(needsAttentionCount)],
             ].map(([label, value]) => (
               <article
                 key={label}
@@ -90,6 +128,11 @@ export default async function DashboardPage() {
               >
                 <p className="text-sm text-slate-400">{label}</p>
                 <p className="mt-3 text-3xl font-bold">{value}</p>
+                {label === "Needs attention" ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Below 75% attendance, last 14 days
+                  </p>
+                ) : null}
               </article>
             ))}
           </section>
