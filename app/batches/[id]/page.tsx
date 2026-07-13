@@ -68,6 +68,12 @@ export default async function BatchDetailPage({
 
           <div className="flex gap-3">
             <Link
+              href={`/batches/${id}/materials`}
+              className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold hover:border-violet-400"
+            >
+              Materials
+            </Link>
+            <Link
               href={`/batches/${id}/edit`}
               className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold hover:border-violet-400"
             >
