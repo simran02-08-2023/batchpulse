@@ -19,10 +19,31 @@ function ResetPasswordForm() {
     const supabase = createClient();
 
     async function verifyRecoverySession() {
+      const code = searchParams.get("code");
+
+      if (code) {
+        const { error: exchangeError } =
+          await supabase.auth.exchangeCodeForSession(code);
+
+        if (exchangeError) {
+          console.error("Exchange code error:", exchangeError.message);
+          setError(
+            "This reset link is invalid or has expired. Request a new one."
+          );
+          setReady(true);
+          return;
+        }
+
+        setReady(true);
+        return;
+      }
+
       const { data, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError || !data.session) {
-        setError("This reset link is invalid or has expired. Request a new one.");
+        setError(
+          "This reset link is invalid or has expired. Request a new one."
+        );
         setReady(true);
         return;
       }
@@ -31,6 +52,7 @@ function ResetPasswordForm() {
     }
 
     verifyRecoverySession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -94,8 +116,7 @@ function ResetPasswordForm() {
                   minLength={6}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  disabled={Boolean(error)}
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-violet-400"
                 />
               </label>
 
@@ -107,14 +128,13 @@ function ResetPasswordForm() {
                   minLength={6}
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  disabled={Boolean(error)}
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 outline-none focus:border-violet-400"
                 />
               </label>
 
               <button
                 type="submit"
-                disabled={submitting || Boolean(error)}
+                disabled={submitting}
                 className="w-full rounded-lg bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? "Updating password…" : "Update password"}
