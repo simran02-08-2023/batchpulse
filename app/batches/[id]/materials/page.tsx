@@ -141,12 +141,12 @@ export default async function MaterialsPage({
                         </div>
                         <div className="flex items-center gap-3">
                           {material.signedUrl ? (
-                            <a>
+                            <a 
                               href={material.signedUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold hover:bg-violet-400"
-                            
+                            >
                               Download
                             </a>
                           ) : (
