@@ -1,3 +1,4 @@
+import { AttendanceDatePicker } from "@/components/AttendanceDatePicker";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -86,24 +87,13 @@ export default async function AttendancePage({
           </Link>
         </div>
 
-        <form className="mt-6" action={`/attendance/${batchId}`} method="get">
-          <label className="block max-w-xs">
-            <span className="text-sm font-medium">Date</span>
-            <input
-              type="date"
-              name="date"
-              defaultValue={attendanceDate}
-              max={todayISO()}
-              className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 outline-none focus:border-violet-400"
-            />
-          </label>
-          <button
-            type="submit"
-            className="mt-3 rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold hover:border-violet-400"
-          >
-            Load this date
-          </button>
-        </form>
+        <div className="mt-6">
+          <AttendanceDatePicker
+            batchId={batchId}
+            currentDate={attendanceDate}
+            maxDate={todayISO()}
+          />
+        </div>
 
         {saved ? (
           <p className="mt-6 rounded-lg border border-emerald-900 bg-emerald-950/50 p-3 text-sm text-emerald-200">
