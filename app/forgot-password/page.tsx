@@ -73,9 +73,9 @@ export default async function ForgotPasswordPage({ searchParams }: Props) {
                   name="code"
                   required
                   inputMode="numeric"
-                  maxLength={6}
-                  placeholder="123456"
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-violet-400"
+                  maxLength={10}
+                  placeholder="Enter the code from your email"
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-center text-xl tracking-[0.3em] outline-none focus:border-violet-400"
                 />
               </label>
 
