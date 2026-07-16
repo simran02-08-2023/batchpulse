@@ -1,20 +1,17 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  enrollExistingStudent,
-  createAndEnrollStudent,
-} from "@/app/batches/[id]/students/actions";
+import { createAndEnrollStudent } from "@/app/batches/[id]/students/actions";
 
-export default async function AddStudentPage({
+export default async function NewStudentPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; q?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
-  const { error, q } = await searchParams;
+  const { error } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -36,34 +33,11 @@ export default async function AddStudentPage({
     notFound();
   }
 
-  const { data: alreadyEnrolled } = await supabase
-    .from("enrollments")
-    .select("student_id")
-    .eq("batch_id", id);
-
-  const enrolledIds = new Set(
-    (alreadyEnrolled || []).map((e) => e.student_id)
-  );
-
-  let searchResults: { id: string; full_name: string; email: string | null }[] =
-    [];
-
-  if (q && q.trim().length > 0) {
-    const { data } = await supabase
-      .from("students")
-      .select("id, full_name, email")
-      .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
-      .limit(10);
-
-    searchResults = (data || []).filter((s) => !enrolledIds.has(s.id));
-  }
-
-  const enrollExistingWithId = enrollExistingStudent.bind(null, id);
   const createAndEnrollWithId = createAndEnrollStudent.bind(null, id);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
-      <section className="mx-auto w-full max-w-2xl">
+    <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+      <section className="mx-auto w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8">
         <Link
           href={`/batches/${id}`}
           className="text-sm font-semibold text-violet-300"
@@ -71,9 +45,16 @@ export default async function AddStudentPage({
           ← Back to {batch.name}
         </Link>
 
-        <h1 className="mt-6 text-3xl font-bold">Add a student</h1>
+        <h1 className="mt-8 text-3xl font-bold">Add a new student</h1>
         <p className="mt-2 text-slate-400">
-          Search for an existing student or add a new one.
+          Looking for an existing student instead?{" "}
+          <Link
+            href={`/batches/${id}`}
+            className="font-semibold text-violet-300"
+          >
+            Search from the batch page
+          </Link>
+          .
         </p>
 
         {error ? (
@@ -82,142 +63,76 @@ export default async function AddStudentPage({
           </p>
         ) : null}
 
-        <div className="mt-8 rounded-xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="font-semibold">Search existing students</h2>
-          <form
-            className="mt-4 flex gap-3"
-            action={`/batches/${id}/students/new`}
-            method="get"
-          >
+        <form action={createAndEnrollWithId} className="mt-8 space-y-5">
+          <label className="block">
+            <span className="text-sm font-medium">Full name</span>
             <input
               type="text"
-              name="q"
-              defaultValue={q || ""}
-              placeholder="Search by name or email…"
-              className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
+              name="full_name"
+              required
+              placeholder="e.g. Riya Sharma"
+              className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
             />
-            <button
-              type="submit"
-              className="rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-semibold hover:border-violet-400"
-            >
-              Search
-            </button>
-          </form>
+          </label>
 
-          {q ? (
-            searchResults.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-500">
-                No matching students found. Add a new one below.
-              </p>
-            ) : (
-              <ul className="mt-4 divide-y divide-slate-800">
-                {searchResults.map((student) => (
-                  <li
-                    key={student.id}
-                    className="flex items-center justify-between py-3"
-                  >
-                    <div>
-                      <p className="font-medium">{student.full_name}</p>
-                      {student.email ? (
-                        <p className="text-sm text-slate-400">
-                          {student.email}
-                        </p>
-                      ) : null}
-                    </div>
-                    <form action={enrollExistingWithId}>
-                      <input
-                        type="hidden"
-                        name="studentId"
-                        value={student.id}
-                      />
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold hover:bg-violet-400"
-                      >
-                        Enroll
-                      </button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            )
-          ) : null}
-        </div>
-
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="font-semibold">Or add a new student</h2>
-          <form action={createAndEnrollWithId} className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="text-sm font-medium">Full name</span>
+              <span className="text-sm font-medium">
+                Email <span className="text-slate-500">(optional)</span>
+              </span>
               <input
-                type="text"
-                name="full_name"
-                required
-                placeholder="e.g. Riya Sharma"
+                type="email"
+                name="email"
+                placeholder="student@example.com"
                 className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
               />
             </label>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium">
-                  Email <span className="text-slate-500">(optional)</span>
-                </span>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="student@example.com"
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
-                />
-              </label>
+            <label className="block">
+              <span className="text-sm font-medium">
+                Phone <span className="text-slate-500">(optional)</span>
+              </span>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="+91…"
+                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
+              />
+            </label>
+          </div>
 
-              <label className="block">
-                <span className="text-sm font-medium">
-                  Phone <span className="text-slate-500">(optional)</span>
-                </span>
-                <input
-                  type="tel"
-                  name="phone"
-                  placeholder="+91…"
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
-                />
-              </label>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium">
+                Parent name <span className="text-slate-500">(optional)</span>
+              </span>
+              <input
+                type="text"
+                name="parent_name"
+                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
+              />
+            </label>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium">
-                  Parent name{" "}
-                  <span className="text-slate-500">(optional)</span>
-                </span>
-                <input
-                  type="text"
-                  name="parent_name"
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
-                />
-              </label>
+            <label className="block">
+              <span className="text-sm font-medium">
+                Parent phone{" "}
+                <span className="text-slate-500">(optional)</span>
+              </span>
+              <input
+                type="tel"
+                name="parent_phone"
+                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
+              />
+            </label>
+          </div>
 
-              <label className="block">
-                <span className="text-sm font-medium">
-                  Parent phone{" "}
-                  <span className="text-slate-500">(optional)</span>
-                </span>
-                <input
-                  type="tel"
-                  name="parent_phone"
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none focus:border-violet-400"
-                />
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400"
-            >
-              Create and enroll
-            </button>
-          </form>
-        </div>
+          <button
+            type="submit"
+            className="w-full rounded-lg bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400"
+          >
+            Create and enroll
+          </button>
+        </form>
       </section>
     </main>
   );
